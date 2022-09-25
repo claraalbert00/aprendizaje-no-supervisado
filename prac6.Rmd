@@ -1,0 +1,248 @@
+---
+title: "Pràctica 6: MDS-2na part:Anàlisi de correspondències"
+author: "Clara Albert"
+date: "10/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+Tenim els resultats de les eleccions municipals (2019) a Barcelona ciutat, on els resultats s'han agrupat per districtes.
+```{r}
+require(analogue);require(readr); require(FactoMineR)
+bcn2019 <- as.data.frame(read_table2("MunicBcn2019_districtes.txt",col_names = FALSE))
+distr <- as.vector(bcn2019[,1])
+bcn0 <- as.matrix(bcn2019[-1])
+rownames(bcn0) <- distr
+dim(bcn0)
+
+# tallem i considerem "altres"= candidatures a partir col 17 amb pocs vots
+altres <- apply(bcn0[,17:30],1,sum)
+bcn0 <- data.frame(bcn0[,1:16],altres)
+names(bcn0) <- c("Elecs","Votants", "ab","n","Val","b","erc","bec","psc","cs","jts","pp","cup","bcp","vox","pcm","alt")
+
+# comprovem que suma els "Elecs" (electors):
+all.equal(apply(bcn0[,c(3,4,6:17)],1,sum), as.numeric(bcn0[,1]), check.attributes=F)
+# comprovem que suma els "Votants" (exclou abs):
+all.equal(apply(bcn0[,c(4,6:17)],1,sum), as.numeric(bcn0[,2]), check.attributes=F)
+# comprovem que suma els "Val" (vàlids -no inclouen abs ni nuls, però sí blancs i vots a candidatures -):
+all.equal(apply(bcn0[,c(6:17)],1,sum), as.numeric(bcn0[,5]), check.attributes=F)
+
+# eleminem les columnes "Elecs", "Votants" i "Val" i ens quedem amb la resta:
+bcn <- bcn0[,-c(1,2,5)]
+```
+
+Guardeu els objectes N (matriu de recomptes N), **nip**, el vector amb els totals de la fila {n<sub>i+</sub>}, **npj**, el vector amb els totals de columna {n<sub>+j</sub>}, i **npp** el nombre total de casos {n<sub>++</sub>}. També obtenim la taula afengint els totals.
+
+```{r}
+N<-bcn
+npp<-sum(N) # nombre de casos
+nip<-apply(bcn, 1, sum) # totals files
+npj<-apply(bcn, 2, sum) # totals columnes
+tbcn<-cbind(bcn, nip) ## totals files afegits
+tbcn<-rbind(tbcn, c(npj,npp)) ## totals columnes afegits
+dim(N)
+```
+
+## Exercici 1
+Calcula la matriu de proporcions (freq. relatives del total) i guardar-kes en l'objecte P
+```{r}
+class(N)
+N= as.matrix(N)
+class(N)
+P=N/npp
+sum(P)
+```
+
+
+## Exercici 2
+Marginals: Calcula i guarda el vector c que conté les masses de les columnes. Fes el mateix amb el vector r que conté les masses de les files. Mostra els vectors r i c. 
+```{r}
+c=npj/npp
+r=nip/npp
+c; r
+```
+
+
+
+## Exercici 3
+Calcula els *perfils fila* i guarda'ls en una matriu R: són les proporcions de vots als partits, condicionats a cada districte.
+```{r}
+Dr=solve(diag(r))
+R=Dr%*%P
+apply(R, 1, sum)
+```
+
+## Exercici 4
+Idem amb la matriu C de *perfils columna*
+```{r}
+Dc=solve(diag(c))
+C=P%*%Dc
+apply(C, 2, sum)
+```
+
+
+## Exercici 5
+Fes una funció **dr(N,i,h)** amb R que, donada la matriu de recomptes, calculi la distància $X^2$ entre dues files i, h. 
+```{r}
+dr = function(N,i,h){
+  npp<-sum(N)
+  nip<-apply(N, 1, sum)
+  npj<-apply(N, 2, sum)
+  
+  P=N/npp
+  
+  r=nip/npp
+  R=Dr%*%P
+  
+  dist_numerador=(R[i,]-R[h,])^2
+  dist_denominador=apply(P,2,sum)
+  
+  dist2=sum(dist_numerador/dist_denominador)
+  dist=sqrt(dist2)
+  return (dist)
+}
+```
+
+
+## Exercici 6
+Aplica la funció dr a calcular la distància entre CV i SSG, i entre CV i SM. A quin dels dos altres districtes s'assembla més CV, en termes de la distància khi-quadrat?
+```{r}
+rownames(N)
+
+dr (N,1,5)
+dr (N,1,3)
+```
+
+La distància entre CV i SM és menor que la distància que hi ha entre CV i SSG, per tant Ciutat Vella (CV) s'assembla més al districte de Sant-Montjuïc.
+
+## Exercici 7
+Fes una funció **dchi(N)** que calculi tota la matriu de distàncies kci-quadrat entre tots els perfil fila d'una matriu de recomptes N. La funció **dchi()** ha de donar una llista amb: la matriu de distàncies D, el valor de l'estadísitic U i el seu p-valor. 
+```{r}
+require(fBasics)
+dchi = function(N,dig=2){
+  N=as.matrix(N)
+  npp<-sum(N)
+  nip<-apply(N, 1, sum)
+  npj<-apply(N, 2, sum)
+  
+  P=N/npp
+  c=npj/npp
+  Dc12=(solve(diag(c)))^(1/2)
+  r=nip/npp
+  Dr=solve(diag(r))
+  R=Dr%*%P
+  
+  Y=R%*%Dc12
+  B=Y%*%t(Y)
+  
+  D2=matrix(nrow=10,ncol=10)
+  
+  for(i in 1:10){
+    for (j in 1:10) {
+     D2[i,j]=(-2)*B[i,j] + B[i,i] + B[j,j]
+    }
+  }
+  D=sqrt(D2)
+  
+  Dr12=Dr^(1/2)
+  rcol=matrix(r, ncol = 1)
+  crow=matrix (c, nrow = 1)
+  
+  Z=Dr12%*%(P-rcol%*%crow)%*%Dc12
+  U=npp*tr(Z%*%t(Z))
+  gl=(nrow(N)-1)*(ncol(N)-1)
+
+  pval=pchisq(U, df=gl, lower.tail=FALSE) 
+  
+  
+  list(val.U=U,gl=gl,dchi=round(D,dig),pval=pval)
+}
+```
+
+## Exercici 8
+Aplica la funció **dchi()**, amb 3 dígits, per calcular la matriu de distàncies khi-quadrat dels districtes de BCN. Quina és la parella de districtes amb perfils més diferents segons els vots i aquesta distància. El test: és significatiu? com s'interpreta?
+```{r}
+distancieschi=dchi(N,3)
+distancieschi
+max(distancieschi$dchi)
+rownames(N)
+```
+La distància màxima en la matriu de distàncies khi-quadrat és 0.692 que pertany a la primera columna cinquena fila. Per tant la parella de districtes amb perfils més diferents és aquella amb la distància més elevada, en aquest cas Ciutat Vella amb Sarrià-Sant Gervasi.
+
+El p-valor resultant del test és 0, que és més petit que el 0.05 (nivell de confiança del 95%), per tant el test és significatiu, és a dir, rebutgem la hipòtesi nu·la i tenim que existeixen diferències entre els perfils. 
+
+## Exercici 9
+Calcula la mateixa matriu de distàncies amb la funció **distance()** del paquet **analogue**, especificant el tipus de distància amb l'argument **method**
+```{r}
+require(analogue)
+distchi=distance(N,method = "chi.distance")
+head(distancieschi$dchi);round(head(distchi),3)
+```
+Obtenim la mateixa matriu de distàncies.
+
+## Exercici 10
+Aplica ara la funció (CA) del paquet FactoMineR. Interpreta la gràfica.
+```{r}
+require(FactoMineR)
+###?CA
+bcn.CA<-CA(bcn,ncp=2,graph=F)
+par(mfrow=c(1,1))
+plot(bcn.CA,cex=.6)
+#
+bcn.CA$row$coord
+bcn.CA$row$cos2
+apply(bcn.CA$row$cos2,1,sum) ## qualitat repre 2D
+iner<-bcn.CA$row$inertia
+iner_perc<-100*iner/sum(iner)
+names(iner)<-rownames(bcn)
+bcn.CA$row$contrib
+
+bcn.CA$col$coord
+bcn.CA$col$cos2
+apply(bcn.CA$col$cos2,1,sum) ## qualitat repre 2D
+iner <- bcn.CA$col$inertia
+iner_perc <- 100*iner/sum(iner)
+names(iner) <- rownames(bcn)
+bcn.CA$col$contrib
+```
+En aquest gráfic podem comparar les files entre elles (es representen en blau) i les columnes (es representen en vermell). Veiem que hi ha un "bloc" de distictes que están bastant aprop, per tant són bastant semblants, on hi ha "SM","StA","HG" i "StM". Com em comprovat al exercici 8, s'observa com "CV" i "SSG" es troben bastant allunyats. 
+Per altra banda, els partits polítics s'agrupen més o menys per ideologia. Per exemple, Cs, VOX i PP están més o menys aprop, on a la vegada están allunyats de PSC per una banda i ERC i CUP per una altra. 
+
+Finalment, veiem que els partit polítics Cs, PP i VOX están localitzats a la mateixa regió que els districtes Sarrià-Sant Gervasi i Les Corts. Per altra banda, podem relacionar el "bloc" de districtes esmentat al inici del comentari del gráfic amb els partits polítics psc i sobretot amb pcm. En aquesta zona també trobem els vots nuls i abstencions. 
+
+## Exercici 11
+Repeteix el procediment amb la funció CA però fent que ara l'abstenció i els vots nuls i blancs siguin columnes suplementàries. 
+```{r}
+bcn.CA2 <- CA(bcn, ncp = 2, col.sup = 1:3, graph = F)
+bcn.CA2$row$coord[,1] <- -bcn.CA2$row$coord[,1] 
+bcn.CA2$col$coord[,2] <- -bcn.CA2$col$coord[,2]   
+  
+par(mfrow=c(1,1))
+plot(bcn.CA2,cex=.6)
+
+bcn.CA2$row$coord
+bcn.CA2$row$cos2
+apply(bcn.CA2$row$cos2, 1, sum) ## qualitat repre 2D
+inerf <- bcn.CA2$row$inertia
+inerf_perc <- 100*inerf/sum(inerf)
+names(inerf) <- rownames(bcn)
+bcn.CA2$row$contrib
+
+bcn.CA2$col$coord
+bcn.CA2$col$cos2
+apply(bcn.CA2$col$cos2, 1, sum) ## qualitat repre 2D
+inerc <- bcn.CA2$col$inertia
+inerc_perc <- 100*inerc/sum(inerc)
+names(inerc) <- rownames(bcn)
+bcn.CA2$col$contrib
+
+bcn.CA2$col.sup$coord
+bcn.CA2$col.sup$cos2
+apply(bcn.CA2$col.sup$cos2, 1, sum) ## qualitat repre 2D
+```
+En aquest altre gráfic veiem com les coordenades han canviat. Trobem que els partits polítics están més dispersos en les coordenades i s'ha creat un grup de districtes bastant en el centre que inclouen: StM,StA,HG,SM,CV (els mateixos que abans però incloent CV).
+
+Amb aquest canvi, les coordenades dels districtes han canviat molt, per exemple ara Sarrià-Sant Gervasi está molt allunyat d'aquells partits políticos on abans estava més aprop. 

@@ -1,0 +1,314 @@
+---
+title: "Pràctica 7 ANS"
+author: "Clara Albert"
+date: "27/5/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Fòrmula de Lance-Williams:
+$$d_\alpha(t,j)=\alpha_p\space d(p,j) + \alpha_p \space d(q,j) + \beta \space d(p,q) - \gamma \space |d(p,j)-d(q,j)|$$
+
+####Enllaç complet: $\alpha_p = \alpha_p$, $\beta=0$, $\gamma = -0.5$. Comprova que és la distància entre els veïns més llunyans.
+Coneixem:
+
+$$min(a,b)=\frac{1}{2} (a+b)-\frac{1}{2}|a-b|$$
+
+On:
+
+\begin{equation}
+\begin{split}
+
+d(C_j,C_i) =min\{d(C_j,C_{i1}),d(C_j,C_{i2}\}= \frac{1}{2} d(C_j,C_{i1}) + \frac{1}{2} d(C_j, C_{i2}) - \frac{1}{2} |d(C_j,C_{i1}-d(C_j,C_{i2}))
+
+\end{split}
+\end{equation}
+
+
+####Enllaç simple: $\alpha_p = \alpha_p$, $\beta=0$, $\gamma = 0.5$. Comprova que és la distància entre els veïns més propers.**
+
+Coneixem:
+
+$$max(a,b)=\frac{1}{2} (a+b)+\frac{1}{2}|a-b|$$
+
+On:
+
+\begin{equation}
+\begin{split}
+
+d(C_j,C_i) =max\{d(C_j,C_{i1}),d(C_j,C_{i2}\} = \frac{1}{2} d(C_j,C_{i1}) + \frac{1}{2} d(C_j, C_{i2}) + \frac{1}{2} |d(C_j,C_{i1}-d(C_j,C_{i2}))
+
+\end{split}
+\end{equation}
+
+```{r message=FALSE}
+library(mclust)
+library(FactoMineR)
+library(factoextra)
+```
+
+## Exercici 1
+#### Considera la matriu de distàncies següent: 
+```{r}
+D<-matrix(c(0.00, 0.50, 0.43, 1.00, 0.25, 0.63, 0.38,
+            0.50, 0.00, 0.71, 0.83, 0.67, 0.20, 0.78,
+            0.43, 0.71, 0.00, 1.00, 0.43, 0.67, 0.33,
+            1.00, 0.83, 1.00, 0.00, 1.00, 0.80, 0.86,
+            0.25, 0.67, 0.43, 1.00, 0.00, 0.78, 0.38,
+            0.63, 0.20, 0.67, 0.80, 0.78, 0.00, 0.75,
+            0.38, 0.78, 0.33, 0.86, 0.38, .075, 0.00), 
+            nrow = 7,ncol=7)
+D
+```
+
+#### 1. Guarda la matriu en D. Posa noms a files i columnes. Guarda-ho com a distàncies
+```{r}
+colnames(D)=c('A','B','C','D','E','F','G')
+rownames(D)=c('A','B','C','D','E','F','G')
+D=as.dist(D)
+D
+```
+
+#### 2. Utilitza la funció **hclust()** de la llibreria **mclust** per obtenir els resultats per a diversos mètodes. 
+```{r}
+require(mclust)
+hc=hclust(D,method = "complete")
+hs=hclust(D,method = "single")
+hw=hclust(D,method = "ward.D")
+hw2=hclust(D,method = "ward.D2")
+ha=hclust(D,method="average")
+
+round(ha$height,2)
+ha$merge
+plot(ha, hang=-1)
+```
+
+#### 3. Fes els dendogrames de les 4 solucions amb **plot(hc)**. Prova-ho amb i sense l'opció hang=-1
+```{r}
+par(mfrow=c(1,2))
+plot(hc, main="Cluster dendrogram hc",xlab="")
+plot(hc,hang=-1, main="Cluster dendrogram hc",xlab="")
+
+par(mfrow=c(1,2))
+plot(hs, main="Cluster dendrogram hs",xlab="")
+plot(hs,hang=-1, main="Cluster dendrogram hs",xlab="")
+
+par(mfrow=c(1,2))
+plot(hw, main="Cluster dendrogram hw",xlab="")
+plot(hw,hang=-1, main="Cluster dendrogram hw",xlab="")
+
+par(mfrow=c(1,2))
+plot(hw2, main="Cluster dendrogram hw2",xlab="")
+plot(hw2,hang=-1, main="Cluster dendrogram hw2",xlab="")
+```
+
+#### 4. Per a la solució **hc**, mostra els objectes **merge** i **height**. Explica amb precisió quina informació dóna cadascun.
+```{r}
+hc$merge
+hc$height
+```
+L'objecte **merge** dóna una matriu (n-1)x2. La fila i de la matriu descriu la fusió d'un clúster del pas i del "clustering". Si j és negativa, aleshores aquesta -j és fusiona en aquesta etapa. Si per el contrari, és psotiva, aleshores la fusió és amb el clúster format al anterior j del algorisme. 
+
+L'objecte **height** és un conjunt de n-1 valors ordenats de menor a major. Ens dona l'altura de l'agrupació, és a dir, el valor del criteri asociat amb el mètode d'agrupació per l'aglomeració completa.
+
+#### 5. Per a la solució **hc**, mostra els objectes **order** i **labels**. Canvia les etiquetes per lletres minúscules i comprova que es modifica el dendograma. Permuta l'ordre i comprova que es modifica el dendograma. Fes alguna altra permutació 'raonable' (que no entrecreui clústers).
+```{r}
+hc$order
+hc$labels
+
+hc2=hc
+hc2$labels=c('a','b','c','d','e','f','g')
+hc2$labels
+
+par(mfrow=c(1,2))
+plot(hc2, main="Cluster dendrogram hc",xlab="")
+plot(hc2,hang=-1, main="Cluster dendrogram hc",xlab="")
+
+hc3=hc
+hc3$order=rev(hc$order)
+par(mfrow=c(1,2))
+plot(hc3, main="Cluster dendrogram hc",xlab="")
+plot(hc3,hang=-1, main="Cluster dendrogram hc",xlab="")
+
+hc4=hc
+hc4$order=c(1,5,3,7,2,6,4)
+par(mfrow=c(1,2))
+plot(hc4, main="Cluster dendrogram hc",xlab="")
+plot(hc4,hang=-1, main="Cluster dendrogram hc",xlab="")
+```
+
+#### 6. Per a la solució **hc**, aplica el criteri "colze" en el *diagrama de sedimentació o scree graph* de les altures per decidir el nombre de clústers k. Quin valor de k tries?
+```{r}
+plot(hw$height, type='b',pch=20,main="Scree graph",ylab="altura")
+plot(hc, main="Cluster dendrogram hc",xlab="",hang=-1)
+```
+
+Segons els dos gràfics el valor adient de k, per a mi, és 3, ja que amb la sedimentació veiem 3 canvis de pendent i a més a més amb el dendrograma podem fer les agrupacions: D, B/F i A/E/C/G. Aquest últim grup l'agrupem tot junt, ja que en l'arbre les altures desde on es junten A/E i C/G, per separat a on es junten els 4 no és gaire elevada. 
+
+#### 7. Un cop decidit el nombre de clústers, aquests es poden enquadrar en el dendograma amb la funció **rect.hclust()**. Aplica-la a **hc** amb k=3. Esbrina què fa la funció **cutree()**.
+```{r}
+plot(hc, main="Cluster dendrogram hc",xlab=""); rect.hclust(hc, k=3)
+```
+
+La funció **cutree()** talla el arbre generat a partir de la funció hclust en un número de grup que tu especifiques. 
+```{r}
+clus=cutree(hc,k=3)
+clus
+```
+
+## Exercici 2
+#### El fitxer "lifeexp.dat" conté l'esperança de vida a diverses regions, per edat i sexe, a la dècada dels 60s.
+
+##### 1. Carrega el fitxer amb **source()** i guarda'l a **lifeexp**. Quina classe té aquest objecte? Quins elements té? Com expliques que a Guatemala, per exemple, els valors de m0 i m25 fossin 49 i 40, respectivament?
+```{r}
+lifeexp=source('lifeexp.dat')
+class(lifeexp)
+
+life=lifeexp$value
+head(life)
+
+life["Guatemala",]
+```
+Aquesta base de dades té diferents esperançes de vides separades per sexe i edat per a diverses regions.
+
+# Mirar-me lo de Guatemala
+fsd
+
+#### 2. Abreuja els noms de les files, corretgin manualment les abreujatures que creguis convenient. 
+```{r}
+rownames(life)=abbreviate(rownames(life))
+rownames(life)
+rownames(life)[7]="SA.C"
+rownames(life)[8]= "SA.W"
+rownames(life)[13]="ElSlva"
+rownames(life)[22]="Trini.62"
+rownames(life)[23]="Trini.67"
+rownames(life)[24]="EEUU.66"
+rownames(life)[25]="EEUU.NW66"
+rownames(life)[26]="EEUU.W66"
+rownames(life)[27]="EEUU.67"
+rownames(life)
+```
+
+#### 3. Calcula la matriu de distàncies (Euclidianes) dels països
+```{r}
+dista=dist(life,method = "euclidean")
+```
+
+#### 4. Aplica **hclust()** amb enllaç: simple, complet, ward.D i ward.D2. Dibuixa els dendrogrames en una figura 2x2 (fes que totes les branques s'ajustin a l'eix horitzontal).
+```{r}
+require(mclust)
+hc=hclust(dista,method = "complete")
+hs=hclust(dista,method = "single")
+hw=hclust(dista,method = "ward.D")
+hw2=hclust(dista,method = "ward.D2")
+
+par(mfrow=c(2,2))
+plot(hc,hang=-1, main="Cluster dendrogram hc",xlab="", cex = 0.5)
+
+plot(hs,hang=-1, main="Cluster dendrogram hs",xlab="", cex = 0.5)
+
+plot(hw,hang=-1, main="Cluster dendrogram hw",xlab="", cex = 0.5)
+
+plot(hw2,hang=-1, main="Cluster dendrogram hw2",xlab="", cex = 0.5)
+```
+
+#### 5. Pel mètode de Ward.D, fes un scree graph de les altures i decideix raonadament quins valors de k trobes raonables segons aquest criteri. Per a k=3, remarca els clústers sobre el dendrograma amb la funció **rect.hclust()** sense tancar el plot.
+```{r}
+hw$height
+plot(hw$height, type='b',pch=20,main="Scree graph pel mètode de Ward.D",ylab="altura")
+```
+
+```{r}
+plot(hw, main="Cluster dendrogram hw",xlab="")
+rect.hclust(hw, k=3)
+```
+
+La k escollida seria 5. Si mirem el dendrograma, començem a tallar-lo verticalment. Al inici, es veuen dos grups, on el primer és Cmrn i Mdgs. Del segon grup, tornem a tallar el dendrograma on tenim dos grups més. Del grup de l'esquerra podem tornar-lo a tallar i ens quedaran dos més. El primer de SA.W fins a EEUU.W66 i el segon de Trini.62 a Tuns. Del grup de la dreta el podem tornar a tallar i tenim dos grups més. El primer correspon a SA.C i Gtml i el segon va de Trini.67 a Grln. En total tenim 5 grups. 
+
+#### 6. Considera la solució de Ward.D amb k=5 i fes el procés de *validació a-posteriori* basat en els passos següents:
+
+##### a. Aplica **cutree()** per tenir el clúster de cada cas, guarda-ho en clus que sigui un factor i afegeix la variable al dataframe**life**. Visualitza la capçelera del fitxer. 
+```{r}
+clus=cutree(hw,k=5)
+class(clus)
+clus=as.factor(clus)
+class(clus)
+
+life=data.frame(life,clus)
+head(life)
+```
+
+##### b. Per a les 8 variables inicials, fes una taula que mostri les seves mitjanes en funció del clúster.
+```{r}
+k=5
+mitj<-by(life[,1:8], life$clus, function(x) round(apply(x,2,mean),1),simplify=T)
+dfmitj<-as.data.frame(matrix(unlist(mitj),byrow=F,ncol=k)) # k = num clusters
+rownames(dfmitj)<-names(mitj[[1]])
+colnames(dfmitj)<-paste("clus",1:k,sep="")
+dfmitj
+```
+
+##### Interpreta els clústers en funció dels resultats
+Els 5 clusters representen regions diferents on les seves esperançes de vida són semblants. 
+Primer de tot, veiem que independenment de quin clúster escollit, les esperançes de vida femenines són superiors a les masculines. 
+Per altra banda, el clúster 1 i el 5 són els que tenen en mitjana les esperançes més elevades i el clúster 2 més baixes. 
+
+##### c. Dibuixa les mitjanes tabulades en l'apartat anterior usant la funció **matplot()**. Afegeix a cada mitjana els anys de vida anteriors i repeteix la gràfica. Per què creus que ho fem?
+```{r}
+k<-5
+etiq<-rownames(dfmitj)
+matplot(1:8,dfmitj,type="o",pch=19,lty=1:k,lwd=2,col=c("red","green3","yellow","black","cyan"),
+axes=F,xlab="variables",ylab="mitjanes",cex=.7)
+axis(2,seq(0,70,by=10),las=1)
+axis(1,1:8,labels=etiq,line=1,cex.axis=.6)
+legend("topright",legend=1:k,lty=1:k,col=c("red","green3","yellow","black","cyan"))
+
+
+etiq<-rownames(dfmitj)
+dfmitj2=dfmitj+c(0,25,50,75,0,25,50,75)
+matplot(1:8,dfmitj2,type="o",pch=19,lty=1:k,lwd=2,col=c("red","green3","yellow","black","cyan"),
+axes=F,xlab="variables",ylab="mitjanes",cex=.7)
+axis(2,seq(0,70,by=10),las=1)
+axis(1,1:8,labels=etiq,line=1,cex.axis=.6)
+legend("bottomright",legend=1:k,lty=1:k,col=c("red","green3","yellow","black","cyan"))
+```
+
+Afegim els anys de vida anteriors, ja que s'han de tenir en compte. És a dir, ens mostra l'esperança de vida real, ja que es té en compte els anys de vida que ja hem passat. 
+
+##### Caracteritza els clústers en funció d'aquests resultats. Quines variables semblen discriminar més entre els clústers, segons les mitjanes univariants? 
+Tal i com hem vist, aquesta gràfica contrasta els resultats exposats a l'apartat anterior. Veiem que el clúster 1 i 5 (vermell i blau) són els que tenen l'esperança de vida més alta i en canvi el verd (clúster 2) és el que té l'esperança de vida més baixa per a tots els camps, especialment les edats diferents a 75, independentment de homes o dones. 
+
+Veiem que conforme l'edat va evolucionant, les diferencies entre clústers es va fent menys notable. Això es deu a que pasada certa edat, les esperançes de vida és van estabilitzant. 
+
+##### d. Fes una matriu de gràfiques 2D de les relacions bivariabes entre les variables de l'arxiu *life* (només masculines) amb el factor *clus*, usant **pairs()**
+```{r}
+par(xpd = TRUE)
+pairs(life[1:4], pch=21, bg = c("red", "green3","yellow","black","cyan")[life$clus],main = "Esperances de vida masculina i clústers")
+legend("topleft", pch=22,legend=1:k, pt.bg=c("red","green3","yellow","black","cyan"),col="black",bg="transparent",cex=0.9, box.lwd=1.5,y.intersp=.7)
+```
+
+##### Interpreta els clústers en funció d'aquesta visualització. Quines parelles de variables discriminen més entre clústers?
+
+Tornem a veure resultats semblants als dos vistos anteriorment. S'observa que com més diferencia hi ha entre edats, més disperses estàn les dades. Per un altre costat, el clúster 1 (vermell) sempre trobem els seus punts als gràfics individuals a dalt a la dreta, dades que ens indiquen esperançes de vida elevades per a totes les edats. Per altra banda, els punts verds (clúster 2) es troben al costat oposat de les gràfiques. 
+
+##### e. Aplica PCA a les 8 variables d'esperaça de vida i representa els casos segons l'etiqueta del clúster. Interpreta els resultats, utilitzant tota la informació del resultat de components prinicpals que faci falta.
+```{r}
+res=PCA(life,ncp=2,quali.sup = 9, graph =F,scale.unit=F)
+
+plot(res,choix="var", graph.type="classic")
+plot(res,choix="ind", graph.type="classic")
+
+plot(res,choix="ind",graph.type="classic",label="none",habillage=9,col.hab =c("red","green3","yellow","black","cyan"), legend = list(cex=.5))
+```
+Les variables amb edat 0 són les més diferents a la resta, especialment al gràfic que coordenades. Els dos gràfics on diferenciem els clúesters ens tornen a donar informació semblant als altres apartats. 
+
+##### f. Una altra opció és usar la funció **HCPC()**, aplicada directament al resultat de comps principals. Explora els arguments de la funció, gràfiques, resultats... Explota també la funció **fviz_cluster()**.
+```{r}
+hcpc=HCPC(res, nb.clus=5)
+fviz_cluster(hcpc,palette = c("red", "green3", 'yellow', 'black', "cyan"),labelsize = 8)
+```
+

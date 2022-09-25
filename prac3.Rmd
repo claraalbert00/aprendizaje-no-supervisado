@@ -1,0 +1,480 @@
+---
+title: "Pràctica 3"
+author: "Clara Albert"
+date: "9 de marzo de 2020"
+output: html_document
+---
+# Primera part 
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(fBasics); library(FactoMineR)
+data(decathlon, package="FactoMineR")
+deca<-decathlon
+deca$Competition<-as.factor(deca$Competition)
+```
+
+## Exercici 1
+
+##### Substitueix les variables que són t=temps de curses amb la transformació t=max(t)-t.
+```{r}
+names (deca)
+
+deca$`100m`=max(deca$`100m`)-deca$`100m`
+deca$`400m`=max(deca$`400m`)-deca$`400m`
+deca$`110m.hurdle`=max (deca$`110m.hurdle`)-deca$`110m.hurdle`
+deca$`1500m`=max(deca$`1500m`)-deca$`1500m`
+
+head (deca,3)
+```
+Tranformem les variables 100m, 400m, 100m tanques, 1500m.
+
+## Exercici 2
+
+##### Crea els quatre (sub)fitxers de dades següents: 
+
+### Subfitxer 1: basic
+
+##### El fitxer que conté els casos 1 a 38 (casos actius) i les variables 1 a 10. 
+```{r}
+basic=deca [seq (1,38),seq(1,10)]
+dim (basic)
+head (basic,3)
+```
+
+
+### Subfitxer 2: i.sup
+
+##### El fitxer de variables numèriques suplementàries: conté les columnes 11 i 12 pels casos actius. 
+```{r}
+n.sup=deca[seq(1,38),c(11,12)]
+dim (n.sup)
+head (n.sup,3)
+```
+
+### Subfitxer 3: i.sup
+
+##### El fitxer d'individus suplementaris: casos 39,40 i 41 i les variables 1 a 10.
+
+```{r}
+i.sup=deca[c(39,40,41),seq(1,10)]
+dim (i.sup)
+head (i.sup,3)
+```
+
+### Subfitxer 4: q.sup
+
+##### Un fitxer compost d'una única variable qualitativa suplementaria: variable 13 i casos 1 a 38. 
+```{r}
+q.sup=deca[seq(1,38),13]
+class (q.sup)
+```
+
+## Exercici 3
+
+##### Tipificació de les dades
+
+### Apartat a
+
+##### Per què diem que tipificar equival a determinar les components principals de la matriu de correlacions?
+
+La covariància de variables tipificades és la correlació i la correlació de les dades tipificades coincideix amb la correlació de les dades inicials.
+
+### Apartat b
+
+##### Calcula nombre de files i columnes del fitxer basic. 
+
+```{r}
+n=nrow(basic); n
+p=ncol(basic); p
+
+```
+
+### Apartat c
+
+##### Calcula vector de mitjanes i desviacions típiques
+
+```{r}
+mitj.basic=apply(basic, MARGIN=2,mean); mitj.basic
+cova.basic=apply(basic, MARGIN=2, sd); cova.basic
+```
+
+### Apartat d
+
+##### Tipifica el fitxer de dades bàsiques respecte els seus propis descriptius. 
+
+```{r}
+X=scale(basic,center=TRUE,scale=TRUE)
+X=X*(1/sqrt(n-1))
+head (X,3)
+```
+
+### Apartat e
+
+##### Tipifica els casos suplementaris utilitzant els descriptius de basic.
+
+```{r}
+Xisup=scale(i.sup,center=mitj.basic,scale=cova.basic)
+Xisup=Xisup*(1/sqrt(n-1))
+head (Xisup,3)
+```
+
+### Apartat f
+
+##### Tipifica les variables suplementàries utilitzant els seus propis descriptius.
+
+```{r}
+Xnsup=scale(n.sup,center=T,scale=T)
+Xnsup=Xnsup*(1/sqrt(n-1))
+head (Xnsup,3)
+```
+
+### Apartat g
+
+##### Tracteu la variable qualitativa
+```{r}
+llis<- split(data.frame(basic),q.sup)
+q.sup.m <- lapply(llis,colMeans) 
+q.sup.m <- data.frame(q.sup.m)
+q.sup.m <- t(q.sup.m)
+
+Xqsup <- scale(q.sup.m, center= mitj.basic, scale= cova.basic)
+Xqsup=Xqsup*(1/sqrt(n-1))
+head (Xqsup,3)
+```
+
+## Exercici 4
+
+##### Utilitzarem les matrius $U$,$V$ i $D$
+
+### Apartat a
+
+##### Recordes la relació entre $U$,$V$,$D$ i les matrius de les descomposicions espectrals?
+
+$X = UDV^t$
+
+$A = X^tX$,$A = VD^2V^t$
+
+$B = XX^t$,$B = UD^2U^t$
+
+
+### Apartat b
+
+##### Què és $X^tX$ tal i com has calculat $X$?
+$X^tX$ és la matriu de correlacions de $X$
+
+
+### Apartat c
+
+##### Calcula i guarda els objectes següents:
+```{r}
+sing=svd(X)
+U=sing$u
+V=sing$v
+D=sing$d
+d=diag(D)
+Lambda=d^2
+lambda=diag(Lambda)
+
+
+pvac=(cumsum(lambda)/sum(lambda))*100;pvac
+```
+
+## Exercici 5
+
+##### Fes una gràfica dels valors propis.
+```{r}
+plot (D,xlim=c(1,p),type="b",ylab="Valor propi",xlab="Ordre dels valors propis");abline(h=1,col="red",lty=2,lwd=0.2)
+```
+
+
+##### Fes una gràfica de la variància explicada acumulada.
+```{r}
+plot (pvac,type="b",xlim=c(0,p),ylab="Variànca explicada acumulada (%)",xlab="Ordre dels valors propis");abline(h=70,col="red",lty=2,lwd=0.2)
+```
+
+##### Quantes components recomanaria cadascun dels tres criteris?
+- Criteri del nombre de valors propis que superin el valor propi mitjà: Agafem tots els valors superiors a 1, per tant recomanaria 4 components.
+
+- Criteri del diagrama de sedimentació: No ens hem de quedar amb les components que tenen valors propis molt semblants, per tant ens quedem amb els altres. Segons aquest criteri ens quedem amb 4 components.
+
+- Criteri de superar un percentatge de variància explicada: En aquest criteri, hem d'agafar el número de la component que superi el llindar (en aquest cas 70%). Com veiem a la gràfica de la dreta es la quarta component.
+
+# Continuació
+
+## Exercici 7
+
+##### Escriu les equacions de les 4 components principals:
+```{r}
+Y=X%*%V
+```
+$Y1=V[1,1]X_1+V[2,1]X_2+V[3,1]X_3+V[4,1]X_4$
+
+$Y2=V[1,2]X_1+V[2,2]X_2+V[3,2]X_3+V[4,2]X_4$
+
+$Y3=V[1,3]X_1+V[2,3]X_2+V[3,3]X_3+V[4,3]X_4$
+
+$Y4=V[1,4]X_1+V[2,4]X_2+V[3,4]X_3+V[4,4]X_4$
+
+
+## Exercici 8
+
+##### Calcula les matrius rellevants en el "món de les variables"
+
+##### Contibució de les variables
+```{r}
+var.contr=(V^2)*100
+rownames(var.contr)=colnames(basic)
+colnames(var.contr)=paste("PC",1:ncol(var.contr),sep="")
+head (var.contr)
+```
+
+##### Correlació entre les variables i components
+```{r}
+S=diag(nrow(V))
+
+C=S%*%V%*%d
+rownames(C)=colnames(basic)
+colnames(C)=paste("PC",1:ncol(C),sep="")
+head (C)
+```
+
+##### Coordenades de les variables inicials en l'espai de les components
+```{r}
+var.coord=V%*%d
+rownames(var.coord)=colnames(basic)
+colnames(var.coord)=paste("PC",1:ncol(var.coord),sep="")
+head (var.coord)
+```
+
+##### Cosinus quadrats
+```{r}
+var.cos2=C^2
+head (var.cos2)
+```
+
+##### Cosinus quadrats acumulats
+```{r}
+var.qual=apply(var.cos2, 1, cumsum)
+var.qual=t(var.qual)
+
+head (var.qual)
+```
+
+## Exercici 9
+
+##### Calcula les coordenades de les variables numèriques suplementàries
+```{r}
+nsup.coord=t(Xnsup)%*%U
+
+rownames(nsup.coord)=colnames(Xnsup)
+colnames(nsup.coord)=paste("PC",1:ncol(nsup.coord),sep="")
+
+nsup.coord
+```
+
+## Exercici 10
+
+##### Representa les variables en l'espai
+```{r}
+par(cex=.7)
+plot(var.coord[,1:2],xlim=c(-1,1),ylim=c(-1,1),
+type="n",xlab="PC1 (33%)",ylab="PC2 (15.5%)");abline(h=0); abline(v=0)
+noms<-abbreviate(rownames(var.coord))
+text(var.coord[,1:2],labels=noms)
+arrows(rep(0,10),rep(0,10),var.coord[,1],var.coord[,2],col="red",length=0.1,angle=20)
+curve(sqrt(1-x^2),-1,1,add=T)
+curve(-sqrt(1-x^2),-1,1,add=T)
+
+# Variables numèriques suplementàries
+noms.nsup<-abbreviate(rownames(nsup.coord))
+text(nsup.coord[,1:2],labels=noms.nsup)
+arrows(rep(0,2),rep(0,2),nsup.coord[,1], nsup.coord[,2],col="blue",length=0.1,angle=20)
+```
+
+## Exercici 11
+
+##### Calcula les matrius rellevants per al "món dels individus"
+
+##### Coordenades dels individus scores
+```{r}
+Y=X%*%V
+Y=Y*sqrt(n)
+colnames(Y)<-paste("PC",1:ncol(var.contr),sep="")
+```
+
+##### Contribució dels individus en les components (en %)
+```{r}
+Y2=Y^2
+ind.contr=matrix(nrow=n,ncol=p)
+
+for (i in 1:n){
+  for (k in 1:p){
+    ind.contr[i,k]=100*(Y2[i,k]/sum(Y2[,k]))
+  }
+}
+
+head (ind.contr,3)
+```
+
+##### Inèrcies dels individus
+```{r}
+ind.iner=rep(0,n)
+
+for (i in 1:n){
+  for (l in 1:p){
+    ind.iner[i]=sum(Y2[i,])
+  }
+}
+```
+
+##### Distàncies dels individus
+```{r}
+ind.dist=sqrt(ind.iner)
+```
+
+##### Cosinus quadrats dels individus
+```{r}
+ind.cos2=matrix(nrow=n,ncol=p)
+
+for (i in 1:n){
+  for (k in 1:p){
+    ind.cos2[i,k]=Y2[i,k]/ind.iner[i]
+  }
+}
+head(ind.cos2,3)
+```
+
+##### Qualitats de representació
+```{r}
+ind.qual=rep(0,p)
+suma.qual=rep(0,p)
+
+for (i in 1:p){
+  for (k in 1:n){
+  suma.qual=cumsum(Y2[k,1:i])
+  ind.qual[i]=suma.qual[i]/ind.iner[k]
+  }
+}
+ind.qual
+```
+
+## Exercici 12
+
+##### Representa els individus mitjançant un núvol de punts 2D
+```{r}
+plot(Y[,1],Y[,2],xlim=c(-4.5,4.5),ylim=c(-2.5,2.5),type="p",xlab="PC1 (33%)",ylab="PC2 (15.5%)",cex=0.5,pch=16);abline(h=0); abline(v=0)
+```
+
+## Exercici 13
+
+##### Calcula les coordenades dels individus suplementaris
+```{r}
+Yisup=Xisup%*%V
+Yisup=Yisup*sqrt(n)
+colnames(Yisup)=paste("PC", 1:ncol(Yisup), sep="")
+
+```
+
+
+## Exercici 14
+
+##### Calcula les coordenades dels dos nivells del factor suplementari
+```{r}
+Yqsup=Xqsup%*%V
+Yqsup=Yqsup*sqrt(n)
+colnames(Yqsup)=paste("PC", 1:ncol(Yqsup), sep="")
+```
+
+
+## Gràfic final dels exercicis 12,13 i 14
+```{r}
+plot(Y[,1],Y[,2],xlim=c(-4.5,4.5),ylim=c(-2.5,2.5),type="p",xlab="PC1 (33%)",ylab="PC2 (15.5%)",cex=0.5,pch=16);abline(h=0); abline(v=0)
+points (Yisup,col="red")
+points (Yqsup,col="green",cex=0.5,pch=16)
+noms=rownames(Yqsup)
+text(Yqsup[,1:2], labels = noms, col = "green", cex = .7, pos = 4)
+```
+
+## Components principals amb la llibreria FactoMineR
+
+## Exercici 15
+
+##### Compara els teus resultats amb els que s'obtenen aplicant la funció PCA().
+```{r}
+library(FactoMineR); library (factoextra)
+
+res=PCA(deca, ncp = 10, ind.sup = 39:41, quanti.sup = 11:12, quali.sup = 13)
+names(res)
+names(res$eig)
+names(res$var)
+```
+
+##### Comparació valors propis
+```{r}
+res$eig
+lambda
+```
+Els valors propis són els mateixos
+
+##### Comparació per a la primera component les coordenades:
+
+###### De les variables bàsiques
+```{r}
+res$var$coord[,1]
+var.coord[,1]
+```
+Les coordenades són les mateixes
+
+###### Dels individus bàsics
+```{r}
+res$ind$coord[,1]
+Y[,1]
+```
+Les coordenades són les mateixes
+
+###### Dels individus suplementaris
+```{r}
+res$ind.sup$coord[,1]
+Yisup[,1]
+```
+Les coordenades són les mateixes
+
+###### De la variable qualitativa
+```{r}
+res$quali.sup$coord[,1]
+Yqsup[,1]
+```
+Les coordenades són les mateixes
+
+## Exercici 16
+
+##### Utilitza l'opció graph=TRUE per a: 
+
+##### Posicionament de les variables en el pla determinat per PC1-PC3, PC1-PC4, PC2-PC3 i PC3-PC4.
+```{r}
+plot(res,choix="var",axes=c(1,3))
+plot(res,choix="var",axes=c(1,4))
+plot(res,choix="var",axes=c(2,3))
+plot(res,choix="var",axes=c(3,4))
+```
+
+##### En la gràfica dels individus en el pla PC1-PC2, representa'ls de color diferent segons si son del grup Decastar o OlymplicG.
+```{r}
+plot(res,choix="ind",axes=c(1,2),habillage=13,col.hab=c("red","green"))
+```
+
+##### En la gràfica de les variables en el pla PC1-PC2, fes que només apareguin aquelles que tenen una qualitat de representació superior a 0.45.
+```{r}
+plot(res,choix="var",axes=c(1,2),select="cos2 0.45")
+```
+
+##### En la gràfica dels individus en el pla PC1-PC2, fes que no surtin els individus suplementaris i que només apareguin els quatre que són més distants del centre (origen).
+```{r}
+plot(res,choix="ind",axes=c(1,2),select="dist 4",invisible="ind.sup")
+
+```
+

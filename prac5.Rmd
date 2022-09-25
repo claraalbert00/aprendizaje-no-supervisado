@@ -1,0 +1,166 @@
+---
+title: "Pràctica 5 ANS"
+author: "Clara Albert"
+date: "28/4/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Exercici 1
+Partint de la matriu de distàncies per carretera entre ciutats europees eurodist (paquet datasets, carregat per defecte), es vol construir un mapa mitjançant escalament multidimensional clàssic.
+
+#### Apartat 1
+Utilitzem en primer lloc la funció *cmdscale()*. Els objectes de l’output: _points_ i _eig_: Què són aquests objectes en relació al que hem vist a teoria?
+```{r}
+library(MASS)
+eurodist; class(eurodist);
+eudis <- as.matrix(eurodist)
+rownames(eudis) <- abbreviate(rownames(eudis))
+eudis
+mds <- cmdscale(eudis,eig=T)
+
+loc <- mds$points; loc
+vaps <- mds$eig; vaps
+```
+
+Els _points_ representen les coordenades i els _eig_ són els valors propis de la matriu de dades centrades.
+
+#### Apartat 2
+És semi-definida positiva la matriu de la qual s’estan calculant els vectors i valors propis? Quina matriu és? Quina matriu podem assegurar que és semi-definida positiva sempre?
+
+```{r}
+all (vaps>=0)
+```
+Si hi ha algun vap negatiu vol dir que la matriu de la qual es calcules els valor propis no és semi-definida positiva, per tant en aquest cas no ho és.
+
+És la matriu B de productes escalars. S'ha calculat a partir de la matriu D=eudis que es la de distàncies amb la fòrmula (2) del power point dels apunts.
+
+La matriu que podem assegurar que és sempre semi-definida positiva és la matriu B. 
+
+#### Apartat 3
+Per a cada criteri, calcula els qïocients per a tots els valors de k. Fes les gràfiques següents i respon en base a cada criteri: Dues dimensions són suficients?
+```{r}
+crit1=(cumsum(vaps)/sum(abs(vaps)))*100; crit1
+crit2=(cumsum(vaps^2)/sum(vaps^2))*100; crit2
+
+plot(crit1,type="b",main="Criteri dels valors absoluts",col.main='blue',cex.main=0.8,ylab="",xlab="Ordre dels valors propis",ylim=c(0,100),xaxt="n");abline(h=70,col="red",lty=2); axis(1, at = 1:length(vaps))
+
+plot(crit2,type="b",main="Criteri dels quadrats",col.main='blue',cex.main=0.8,ylab="",xlab="Ordre dels valors propis",ylim=c(0,100),xaxt="n");abline(h=70,col="red",lty=2); axis(1, at = 1:length(vaps))
+```
+
+Dues dimensions si que són suficients pels dos criteris. Veiem que la segona component dels dos criteris supera el llindar establert, que en aquest cas és el 70%. 
+Aquest fet també s'observa amb la gràfica ja que si mirem la segona component ha sobrepasat la línia puntejada vermella. 
+
+#### Apartat 4
+Representa les ciutats en un mapa bidimensional
+```{r}
+plot (loc,type="n",main="eurodist:inicial",col.main="blue",cex.main=0.8,axes=F,ylab="",xlab="");text(loc,labels=abbreviate(rownames(eudis)),cex=0.5)
+```
+
+#### Apartat 5
+Fes una reflexió nord-sud (y → −y).Dibuixa de nou el mapa.
+```{r}
+loc[,2]=-loc[,2]
+head(loc)
+
+plot (loc,type="n",main="eurodist:reflexió a l'eix y",col.main="blue",cex.main=0.8,axes=F,ylab="",xlab="");text(loc,labels=abbreviate(rownames(eudis)),cex=0.5)
+```
+
+#### Apartat 6
+
+Busca ara una rotació en el pla que aproximi millor la posició geogràfica real
+
+```{r}
+angle=-pi/9
+G=matrix(c(cos(angle),-sin(angle),sin(angle),cos(angle)),byrow=T,nrow=2)
+X=loc
+Xrot=X%*%G
+
+par (mfrow=c(1,2))
+
+plot (loc,type="n",main="eurodist:reflexió a l'eix y",col.main="blue",cex.main=0.8,axes=F,ylab="",xlab="");text(loc,labels=abbreviate(rownames(eudis)),cex=0.5)
+
+plot (Xrot,type="n",main="eurodist:reflexió+rotació",col.main="blue",cex.main=0.8,axes=F,ylab="",xlab="");text(Xrot,labels=abbreviate(rownames(eudis)),cex=0.5)
+```
+- Per què no podrem recuperar la posició exacta als mapes? 
+
+Només ens podrem aproximar perquè cada ciutat deu tenir una rotació diferent (els canvis de graus entre una i una altra deuen ser molt petits), però díficil de calcular-ho manualment per a cada ciutat. 
+
+#### Apartat 7
+Obté ara els valors propos o coordenades de $R^2$ sense utilitzat la funció _mdscale()_
+
+```{r}
+eudis=as.matrix(eurodist)
+dista2=eudis^2
+
+row.mean=apply(dista2,1,mean);row.mean
+col.mean=apply(dista2,2,mean);col.mean
+all.mean=mean (dista2);all.mean
+
+
+B=-0.5*(t(t(dista2)-col.mean)-row.mean+all.mean)
+eigens.B=eigen(B)
+
+all.equal(eigens.B$values,vaps)
+
+svd=svd(B)
+U=svd$u
+D=diag(svd$d)
+Lambda=D^(1/2)
+X=U%*%Lambda
+
+all.equal(X[,1],loc[,1],check.attributes = T)
+all.equal(X[,2],loc[,2],check.attributes = T)
+```
+Veiem que els valors propis i les coordenades donen el mateix. 
+
+#### Apartat 8
+A partir de la solució inicial sense rotar, aplica MDS no-mètric a les dades eudis. Compara els punts resultants de l'escalament clàssic i no-mètric en un mateix mapa.
+
+```{r}
+library(MASS)
+mds.nometric=isoMDS(eudis)
+loc[,2]=-loc[,2]
+
+plot(loc,type="p",col="red",pch=16,ylab="",xlab="",main="eudis:clàssic & no-mètric",col.main="blue",cex.main=0.8);points(mds.nometric$points[,1],mds.nometric$points[,2],cex=1.5)
+```
+
+
+#### Apartat 9
+Comprova que a les dades swiss les dues solucions (clàssiques i no-mètiques) difereixen més:
+
+- Quina distància s'està aplicant? Quines altres distàncies es poden obtenir amb aquesta funció?
+```{r}
+swiss.dist=dist(swiss)
+help(dist)
+```
+Per defecte s'aplica al mètode euclidià i com que amb la nostra crida d'aquesta funció no especifiquem cap mètode s'aplica la distància euclidiana.
+Es poden obtenir altres distàncies com: "maximum", "manhattan", "canberra", "binary" i "minkowski".
+
+- Aplica els MDS clássic i no-mètric
+
+```{r}
+library(MASS)
+mds.swiss=cmdscale(swiss.dist)
+mds.nometric.swiss=isoMDS(swiss.dist)
+```
+
+
+- En aquest exemple es treballa amb distàncies no geogràfiques: quin sentit li donaries al MDS?
+```{r}
+help (swiss)
+```
+Aquestes dades són indicadores socio-econòmiques de 47 provincies de Suïssa. Tot i que les distàncies representin llocs, en aquest cas províncies, no representen distàncies geogràfiques sino distàncies socio-econòmiques. Representen els comportaments entre les situacions socials i econòmiques de cada província. 
+
+Per tant, una província allunyada voldrà dir que destacarà en algun factor.
+
+- Dibuixa les dues solucions sobre el mateix mapa.
+```{r}
+plot(mds.swiss,type="p",col="red",pch=16,ylab="",xlab="",main="swiss:clàssic & no-mètric",col.main="blue",cex.main=0.8);points(mds.nometric.swiss$points[,1],mds.nometric.swiss$points[,2],cex=1.5)
+```
+Amb color vermell queda representat el MDS clàssic i amb color negre el MDS no-mètric. 
+
+

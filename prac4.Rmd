@@ -1,0 +1,135 @@
+---
+title: "Pràctica 4 ANS"
+author: "Clara Albert"
+date: "5 de abril de 2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+require(FactoMineR)
+data(decathlon, package="FactoMineR")
+deca<-decathlon
+
+temps<- deca[c(1,5,6,10)]
+maxt<-apply(temps,2,max)
+transf<- -sweep(temps,2,maxt,FUN="-")
+deca[c(1,5,6,10)]<-transf
+
+basic<-deca[-(39:41),-(11:13)]
+n<-nrow(basic); p<-ncol(basic)
+
+res<-PCA(deca,quali.sup=13,quanti.sup=11:12,ind.sup=39:41,graph=F)
+
+vaps<-res$eig[,1]; vaps
+```
+
+## Exerici 1
+
+##### Fes la funció que doni l'interval de confiança per a un valor propi λ<sub>j</sub>, amb j fixat.
+```{r}
+ci.lambda=function(vaps,n,j,alpha=0.05)
+{
+  lamb_j=vaps[j]
+  
+  Z=qnorm (1-(alpha/2),mean=0,sd=1)
+  
+  liminf=exp(log(lamb_j,base=exp(1))-(Z*sqrt(2/(n-1))))
+  
+  limsup=exp(log(lamb_j,base=exp(1))+(Z*sqrt(2/(n-1))))
+  
+  list (lamb_j=lamb_j,nc=1-alpha,liminf=liminf,limsup=limsup)
+}
+```
+
+##### Aplica la funció per determinar un interval de confiança per al valor propi més petit de les dades Decathlon, amb nivell de confiança 0.9.
+
+```{r}
+ci.lambda(vaps = vaps,n=n,j=which.min (vaps),alpha=0.1)
+```
+
+##### Interpreta el resultat.  
+
+Amb un 90% de confiança podem dir que el valor propi més petit de les dades es troba entre l'interval (0.1373,0.2951). Observem que l'estimador de λ<sub>10</sub> és 0.2013.  
+
+
+
+## Exercici 2
+
+##### Fes una funció per fer el test d'incorrelació de les variables inicials.
+```{r}
+incor=function(dades)
+{
+  R=cor(dades)
+  alpha=0.05
+  
+  gl=(1/2)*p*(p-1)
+  
+  u=-(n-1-((1/6)*(2*p+5)))*log(det(R))
+  
+  pvalor=pchisq(u,df=gl,lower.tail=FALSE)
+
+  list (u=u,gl=gl,pvalor=pvalor)
+}
+```
+
+##### Escriu la hipòtesi nul·la per a les dades Decahtlon.  
+
+H<sub>0</sub> : $R=I$  
+
+
+##### Aplica el test a les dades i extreu-ne la conclusió.  
+
+```{r}
+incor (basic)
+```
+Rebutgem H<sub>0</sub> ja que el p-valor calculat és més petit que 0.05 (el nivell de significació per defecte).  
+
+
+##### Si no es pogués descartar la H<sub>0</sub>, quines implicacions pràctiques tindria?  
+
+Implicaria que les variables originals estarien incorrelacionades entre si, per tant l'anàlisi de components principals no sería d'interés (les components principals coincidirien amb les variables originals). 
+
+
+## Exercici 3
+
+##### Crea una funció pel test d'esfericitat parcial.
+```{r}
+esf=function(dades,k)
+{
+  r=p-k
+  
+  k.vaps.finals=rep(0,k)
+  for (i in 1:k){
+    k.vaps.finals[i]=vaps[r+i]
+  }
+  
+  u=(n-(2*p+11)/6)*(k*log(sum (vaps[(r+1):p])/k)-sum(log (vaps[(r+1):p])))
+  
+  gl=(1/2)*(k-1)*(k+2)
+
+  pvalor=pchisq(u,df=gl,lower.tail=FALSE)
+  
+  list (k.vaps.finals=k.vaps.finals ,u=u, gl=gl ,pvalor=pvalor)
+}
+```
+
+
+##### Aplica-ho a les dades Decahtlon, per tal de decidir si les últimes 6 components són sorroll.
+```{r}
+esf (dades=deca,k=6)
+```
+
+
+##### Escriu la hipòtesi nul·la.  
+H<sub>0</sub> : λ<sub>5</sub> = λ<sub>6</sub> = λ<sub>7</sub> = λ<sub>8</sub> = λ<sub>9</sub> = λ<sub>10</sub>  
+
+
+##### Conclusió del test  
+Acceptem H<sub>0</sub> ja que el p-valor és significativament més gran que 0.05 (0.5717).
+
+

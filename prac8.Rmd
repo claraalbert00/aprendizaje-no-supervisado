@@ -1,0 +1,158 @@
+---
+title: "Pràctica 8 ANS"
+author: "Clara Albert"
+date: "3/6/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Exercici 1
+**Instala i carrega les dades pottery**
+```{r}
+require(HSAUR2)
+
+pots.num<-pottery[1:9]
+rangs <- apply(pots.num,2,function(x){max(x)-min(x)})
+
+pots.num<- sweep(pots.num, 2, rangs, FUN = "/")
+pots<- data.frame(pots.num,pottery[10])
+```
+
+## Exercici 2
+**Per a cada nombre de clústers k=1,...,6, aplica la funció kmeans(...,k)**
+```{r}
+RNGkind(sample.kind = "Rounding")
+set.seed(213)
+llista <- lapply(1:6,function(k){kmeans(pots.num,k)})
+names(llista) <- paste0("KM",1:6)
+list2env(llista,globalenv()) 
+KM1; KM2; KM3; 
+names(KM3)
+KM3$cluster
+KM3$centers
+KM3$totss 
+KM3$withinss
+KM3$tot.withinss
+KM3$betweenss
+KM3$size 
+KM3$iter
+```
+
+## Exercici 3
+**Extrau les sumes de quadrats within(totals) wws**
+```{r}
+wllista <- lapply(llista,function(KM){KM[[5]]})
+names(wllista) <- paste0("wss",1:6)
+wllista
+list2env(wllista,globalenv())
+wss3
+wss <- unlist(wllista)
+class(wss)
+```
+
+## Exercici 4
+**Comprova que el valor de wws1 és igual a (n-1)(Var(X_1)+...+Var(X_2))**
+```{r}
+n <- nrow(pots.num)
+TSS <- (n-1)*sum(apply(pots.num,2,"var"))
+all.equal(wss1,TSS,check.attributes=F)
+```
+
+## Exercici 5
+**Calcula les sumes de quadrats between bss**
+```{r}
+bss <- TSS - wss
+names(bss) <- paste0("bss",1:6)
+bss
+bllista <- lapply(llista,function(KM){KM[[6]]})
+names(bllista) <- paste0("bss",1:6)
+bllista
+list2env(bllista,globalenv())
+bss3 
+bss <- unlist(bllista)
+class(bss)
+```
+
+## Exercici 6
+**Representa les sumes de quadrats wss i bbs al mateix gràfic**
+```{r}
+plot(1:6, wss, type = "b", lwd=2, ylim=c(0,wss[1]),
+xlab = "Nombre de clústers", ylab = "Sumes de qudrats within i between")
+points(1:6, bss, type = "b",lwd = 2,col="blue")
+legend("topright",legend=c("WSS","BSS"), col=c(1,4),lwd=2)
+```
+
+## Exercici 7
+**Respresenta wws respecte k en una gràfica anomenada de sedimentació**
+**Quin és el nombre de clústers més recomanable?**
+```{r}
+df<-data.frame(k=1:6,bss,wss)
+plot(wss~k,data=df, type = "b",lwd=2,ylim=c(0,wss[1]))
+```
+
+## Exercici 8
+**Aplica kmeans() amb el valor escollit i guarda el resultat en pots.km**
+**Interpreta els clústers comparant les seves mitjanes amb una gràfica de línies**
+**Fes una taula de contingència entre les variables kiln i cluster**
+```{r}
+k<-3
+pots.km<-kmeans(pots[1:9], k)
+centr<-pots.km$centers
+p<-ncol(centr)
+par(mfrow=c(1,1),cex=.7,cex.main=.7, cex.axis=.6, cex.lab=.6)
+etiq<-colnames(centr)
+matplot(1:p,t(centr),type="o",pch=19,lty=1:k,lwd=2,col=rainbow(k),axes=F,xlab="variables",ylab="mitjanes",cex=.7)
+axis(2,seq(0,2,by=0.25),las=1)
+axis(1,1:p,labels=etiq,line=1,cex.axis=.6)
+legend("topright",legend=1:k,lty=1:k,col=rainbow(k))
+table(pots.km$cluster,pots$kiln)
+```
+
+## Exercici 9
+**Aplica components principals amb cinc components a les variables numèriques i amb cluster com a qualitativa**
+```{r}
+pots2<-data.frame(pots[-10],clus=as.factor(pots.km$cluster))
+require(FactoMineR)
+pc2<-PCA(pots2,scale.unit=F,quali.sup=10,graph=F)
+par(mfrow=c(2,2),cex=.7,cex.main=.7, cex.axis=.6, cex.lab=.6)
+plot(pc2,choix="var",graph.type = "classic")
+plot(pc2,habillage=10,col.hab=rainbow(k),graph.type = "classic")
+plot(pc2,axes=c(1,3),habillage=10,col.hab=rainbow(k),graph.type = "classic")
+plot(pc2,axes=c(2,3),habillage=10,col.hab=rainbow(k),graph.type = "classic")
+```
+
+## Exercici 9
+**Reanalitza les dades pottery amb el mètode EM amb distribució Gaussiana**
+```{r}
+require(mclust)
+pots.em<-Mclust(pots.num,G=1:5,verbose=FALSE)
+print(pots.em)
+summary(pots.em)
+```
+
+## Exercici 10
+**Explora el codi següent i els resultats, buscant les ajudes que facin falta**
+```{r}
+plot(pots.em, what = "BIC", col = "black", ylab = "-BIC")
+pots.em3<-Mclust(pots[1:9], G=3, modelNames="VVI",verbose=FALSE)
+emclus<-pots.em3$classification
+table(emclus)
+table(emclus, pots.km$cluster)
+
+mitjanes<-pots.em3$parameters$mean
+colnames(mitjanes)<-unique(emclus)
+mitjanes
+
+clPairs(pots[1:5], classification = emclus, symbols = 1:3, col = "black") ## algunes variables
+
+pots3<-data.frame(pots[-10],clus=as.factor(emclus))
+require(FactoMineR)
+pc3<-PCA(pots3,quali.sup=10,graph=F)
+par(mfrow=c(1,2),cex=.7,cex.main=.7, cex.axis=.6, cex.lab=.6)
+plot(pc3,choix="var",graph.type = "classic")
+plot(pc3,choix="ind",habillage=10,graph.type = "classic")
+```
+

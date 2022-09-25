@@ -1,0 +1,206 @@
+---
+title: "Pràctica 2: Descomposicions de matrius"
+author: "Clara Albert"
+date: "02/03/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+set.seed(1234)
+library (mnormt); library (xtable); library(fBasics)
+```
+
+# Exercici 1
+
+#### Genera mostra Gaussiana multivariant. Assigna noms. Calcula el rang i la dimensió.
+```{r}
+mu= matrix (c(5,1,-1,-4),nrow=4,ncol=1)
+cova= matrix (c(3,1.385,-2.939,1,1.385,1,-1.979,1,-2.939,-1.979,8,-3,1,1,-3,8),nrow=4,ncol=4)
+
+data=rmnorm(2000,mu,cova)
+
+data=as.data.frame(data)
+names (data)=c("X1","X2","X3","X4")
+
+rk (data)
+dim (data)
+```
+
+# Exercici 2
+
+#### Exercici amb SD.
+```{r}
+m1=apply (data,MARGIN=2,FUN=mean)
+X=sweep(as.matrix(data),2,m1)
+
+require (fBasics)
+
+A=t(X)%*%X
+
+```
+
+## Apartat a
+
+#### Calcula la descomposició espectral de A. Guarda els valors i vectors propis. Dóna la classe i dimensió de Lambda i V. 
+
+```{r}
+require (fBasics)
+sdA=eigen(A)
+
+vaps=sdA$values; vaps
+Lambda=diag (vaps); Lambda
+
+V=sdA$vectors; V
+
+class (Lambda)
+dim (Lambda)
+
+class (V)
+dim (V)
+```
+
+## Apartat b
+
+#### Comprova l'ortogonalitat de V i la igualtat del teorema espectral.
+```{r}
+
+all.equal (t(V),solve(V),check.attributes=F)
+all.equal(A,V%*%Lambda%*%t(V),check.attributes=F)
+
+```
+Com la matriu transposada de V i la seva inversa coincideix diem que la matriu V és ortogonal. 
+Amb el segon all.equal comprovem que el teorema espectral és compleix. 
+
+
+## Apartat c
+
+#### Quina és la relació entre la descomposició espectral de A i de S?
+```{r}
+S=cov(data)
+sdS=eigen(S)
+
+VS=sdS$vectors
+
+all.equal (abs(V),abs (VS))
+
+```
+Els vectors són els mateixos(no donem importància als signes en auqest cas).La igualtat és com a vectors, per tant en la direcció. 
+
+## Apartat d
+
+#### Calcula la matriu B i comprova la igualtat.
+```{r}
+B=X%*%t(X)
+
+Lambda12=diag (vaps^(-1/2))
+U=X%*%V%*%Lambda12
+
+all.equal (B, U%*%Lambda%*%t(U))
+```
+
+## Apartat e
+
+#### Calcula la matriu Q que factoritza A
+```{r}
+Lambda1.2=diag (vaps^(1/2))
+Q=V%*%Lambda1.2
+all.equal(A,Q%*%t(Q),check.attributes=F)
+```
+
+
+## Apartat f
+
+#### Calcula totes les aproximacions de rang A. Quina de les aproximacions assoleix el mínim?
+
+```{r}
+A12=Q[,1]%*%t(Q[,1])+Q[,2]%*%t(Q[,2]); A12
+A13=Q[,1]%*%t(Q[,1])+Q[,3]%*%t(Q[,3]); A13
+A14=Q[,1]%*%t(Q[,1])+Q[,4]%*%t(Q[,4]); A14
+
+A23=Q[,2]%*%t(Q[,2])+Q[,3]%*%t(Q[,3]); A23
+A24=Q[,2]%*%t(Q[,2])+Q[,4]%*%t(Q[,4]); A24
+
+A34=Q[,3]%*%t(Q[,3])+Q[,4]%*%t(Q[,4]); A34
+
+(sum((A-A12)^2))^(1/2)
+(sum((A-A13)^2))^(1/2)
+(sum((A-A14)^2))^(1/2)
+
+(sum((A-A23)^2))^(1/2)
+(sum((A-A24)^2))^(1/2)
+
+(sum((A-A34)^2))^(1/2)
+```
+L'aproximació amb les columnes 1 i 2 és la que assoleix el mínim. 
+
+
+# Exercici 3
+
+#### Exercici amb SVD.
+
+```{r}
+svd=svd (X)
+```
+
+## Apartat a
+
+#### Comprova que les matrius del exercici 2 i exercici 3 són les mateixes (llevat dels signes). 
+```{r}
+all.equal(abs (svd$d),abs (vaps^(1/2)))
+
+all.equal (abs (svd$u),abs (U))
+
+all.equal (abs (svd$v),abs (V))
+```
+
+## Apartat b
+
+#### Comprova
+
+```{r}
+u=svd$u
+d=svd$d
+d=diag (d)
+v=svd$v
+
+all.equal (X,u%*%d%*%t(v),check.attributes=F)
+
+dim (d)
+dim (u)
+dim (v)
+
+sum1=d[1,1]*u[,1]%*%t(v[,1])
+sum2=d[2,2]*u[,2]%*%t(v[,2])
+sum3=d[3,3]*u[,3]%*%t(v[,3])
+sum4=d[4,4]*u[,4]%*%t(v[,4])
+
+suma=sum1+sum2+sum3+sum4
+
+all.equal(X,suma,check.attributes=F)
+
+```
+
+## Apartat c
+
+#### Dóna la millor aproximació de X de rang 3 i quantifica l'error d'aquesta aproximació.
+
+```{r}
+A123=Q[,1]%*%t(Q[,1])+Q[,2]%*%t(Q[,2])+Q[,3]%*%t(Q[,3]); A123
+A124=Q[,1]%*%t(Q[,1])+Q[,2]%*%t(Q[,2])+Q[,4]%*%t(Q[,4]); A124
+A134=Q[,1]%*%t(Q[,1])+Q[,3]%*%t(Q[,3])+Q[,4]%*%t(Q[,4]); A134
+
+A234=Q[,2]%*%t(Q[,2])+Q[,3]%*%t(Q[,3])+Q[,4]%*%t(Q[,4]); A234
+
+(sum((A-A123)^2))^(1/2)
+(sum((A-A124)^2))^(1/2)
+(sum((A-A134)^2))^(1/2)
+
+(sum((A-A234)^2))^(1/2)
+```
+La millor aproximació és A123 i el seu error és: 465,73.
+
+
